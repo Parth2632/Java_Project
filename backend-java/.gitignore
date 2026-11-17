@@ -1,7 +1,0 @@
-# Build output
-target/
-# Secrets: copy .env.example to .env
-.env
-# Local databases hold real account data and must never be committed
-*.db
-*.db-journal

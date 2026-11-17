@@ -40,43 +40,34 @@ is in [docs/PRIVACY.md](docs/PRIVACY.md).
 | Area | Tools |
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, MediaPipe Tasks Vision |
-| Backend | Python 3.10+, FastAPI, SQLAlchemy, SQLite, bcrypt, JWT |
-| Tests | pytest (backend), Vitest and React Testing Library (frontend) |
+| Backend | Java 21, Spring Boot 4, Spring Data JPA (Hibernate), SQLite, bcrypt, JWT; built with Maven |
+| Tests | JUnit 5 and MockMvc (backend), Vitest and React Testing Library (frontend) |
 
 ## Run it locally
 
-You need Python 3.10 or newer and Node.js 18 or newer.
+You need Java 21 or newer and Node.js 18 or newer. Maven is not needed: the
+backend comes with the Maven wrapper (`mvnw`), which downloads it on first use.
 
 ### 1. Backend
 
+Create `backend/.env` by copying `backend/.env.example`, and set
+`JWT_SECRET_KEY` to a random string of at least 32 characters. In PowerShell
+this prints one:
+
+```powershell
+$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+```
+
+Start the server (on macOS and Linux, use `./mvnw` instead of `mvnw`):
+
 ```bash
 cd backend
-python -m venv venv
+mvnw spring-boot:run
 ```
 
-Activate the environment: `venv\Scripts\activate` on Windows, or
-`source venv/bin/activate` on macOS and Linux. Then:
-
-```bash
-pip install -r requirements.txt
-```
-
-Create `backend/.env` by copying `backend/.env.example`, and set
-`JWT_SECRET_KEY` to a long random string. This prints one:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Start the server:
-
-```bash
-uvicorn main:app --port 8001 --reload
-```
-
-The API is at `http://localhost:8001` and its interactive docs at
-`http://localhost:8001/docs`. The database file `backend/mathverse.db` is
-created on first start.
+The API is at `http://localhost:8001`. The database file
+`backend/mathverse.db` is created on first start. The first run downloads
+Maven and the libraries, so it takes a few minutes.
 
 ### 2. Frontend
 
@@ -94,7 +85,7 @@ Open `http://localhost:5173`.
 
 | Setting | Effect |
 |---|---|
-| `DEMO_MODE=true` | Shows one-click demo buttons on the sign-in dialog. Run `python seed.py --demo` once first to create the three demo accounts with sample data. Off by default. |
+| `DEMO_MODE=true` | Shows one-click demo buttons on the sign-in dialog. Run `mvnw spring-boot:run -Dspring-boot.run.arguments=--demo` once first (in `backend/`) to create the three demo accounts with sample data. Off by default. |
 | `GROQ_API_KEY=...` | Lets a language model reword hints in character. Without it the built-in hints are used. |
 | `CORS_ORIGINS=...` | Comma-separated frontend addresses allowed to call the API. |
 
@@ -111,7 +102,7 @@ Open `http://localhost:5173`.
 
 ```bash
 cd backend
-pytest
+mvnw test
 ```
 
 ```bash
@@ -125,24 +116,28 @@ npm run build
 The backend suite covers sign-in and access control, the demo-login
 restrictions, the game rules, the mastery model, the correctness of every
 question type at every level, hints, and reports checked against hand-computed
-values. The frontend suite covers the camera consent flow (declining, denial,
-switching off mid-mission, and that no image is ever uploaded) and the
-dashboards. The same checks run in GitHub Actions on every push.
+values, and that the API's JSON and error bodies have the exact shape the
+frontend expects. The frontend suite covers the camera consent flow
+(declining, denial, switching off mid-mission, and that no image is ever
+uploaded) and the dashboards.
+
+`npm run check:camera` (in `frontend/`, with both servers running and the
+backend built with `mvnw package`) runs the real app in headless Chrome with a
+pretend webcam and checks the stored rows afterwards.
 
 ## Project layout
 
 ```
-backend/
-  main.py            app and routes wiring
-  config.py          settings from environment / .env
-  models.py          database tables
-  schemas.py         request and response shapes
-  security.py        password hashing and login tokens
-  deps.py            who is calling and what they may see
-  seed.py            demo accounts (--demo) and database reset (--reset)
-  routers/           auth, sessions (gameplay), guardians, reports
-  services/          questions, mastery, hints, attention, game rules, report builder
-  tests/
+backend/                         Java (Spring Boot), built with Maven: pom.xml, mvnw
+  src/main/java/com/mathverse/
+    MathVerseApplication.java    starts the server, or runs --demo / --reset / --verify-attempts
+    config/          settings from environment / .env, JSON rules, CORS, error bodies
+    model/           database tables and their queries
+    dto/             request and response shapes
+    security/        password hashing, login tokens, who is calling and what they may see
+    controller/      auth, sessions (gameplay), guardians, reports, health
+    service/         questions, mastery, hints, attention, game rules, report builder, demo data
+  src/test/java/com/mathverse/   tests
 frontend/src/
   lib/api.ts         the one client for the backend
   lib/attention/     in-browser camera tracking and its summary
@@ -152,6 +147,7 @@ docs/
   ARCHITECTURE.md    how it works and how to explain it
   PRIVACY.md         what is collected and what is not
   AUDIT_AND_PLAN.md  the audit this version was built from
+  JAVA_BACKEND.md    how the Java backend was ported from the original Python one
 journals/, project-proposal/, project-report-prototype-stage/, srs/   coursework
 ```
 

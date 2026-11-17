@@ -1,6 +1,6 @@
 # MathVerse — Audit and Cleanup Plan
 
-> **Status:** all five phases (A–E) have been carried out. This document is kept as the record of what was found in the original code and what was agreed. For how the system works now, see [ARCHITECTURE.md](ARCHITECTURE.md) and [PRIVACY.md](PRIVACY.md). File paths and line numbers in section 2 refer to the code as it was before the cleanup.
+> **Status:** all five phases (A–E) have been carried out. This document is kept as the record of what was found in the original code and what was agreed. For how the system works now, see [ARCHITECTURE.md](ARCHITECTURE.md) and [PRIVACY.md](PRIVACY.md). File paths and line numbers in section 2 refer to the code as it was before the cleanup. The backend has since been rewritten in Java with the same behaviour (see [JAVA_BACKEND.md](JAVA_BACKEND.md)), so every Python path in this document is historical.
 
 ## Context
 

@@ -3,6 +3,14 @@
 How the system fits together, and how to explain each part. For the history of
 why it looks like this, see [AUDIT_AND_PLAN.md](AUDIT_AND_PLAN.md).
 
+The backend is Java (Spring Boot). Its code is in
+`backend/src/main/java/com/mathverse/` and its tests in
+`backend/src/test/java/com/mathverse/`; below, `service/Mastery.java` means
+`backend/src/main/java/com/mathverse/service/Mastery.java`, and `MasteryTest`
+means `backend/src/test/java/com/mathverse/MasteryTest.java`. It replaced an
+earlier Python backend with the same behaviour; how each part was ported is in
+[JAVA_BACKEND.md](JAVA_BACKEND.md).
+
 ## The four rules
 
 1. **The server owns the truth.** It writes each question, keeps the answer,
@@ -28,13 +36,13 @@ flowchart LR
     MP --> API[lib/api.ts]
     PD[Dashboards] --> API
   end
-  subgraph FastAPI
-    AUTH[deps.py<br/>who is calling, what may they see]
-    SES[routers/sessions.py]
-    Q[services/questions.py<br/>generator, 3 tiers]
-    M[services/mastery.py<br/>BKT per topic]
-    H[services/hints.py<br/>built-in hint, optional AI wording]
-    REP[routers/reports.py]
+  subgraph Java backend
+    AUTH[security/AuthInterceptor, Access<br/>who is calling, what may they see]
+    SES[service/Missions]
+    Q[service/Questions<br/>generator, 3 tiers]
+    M[service/Mastery<br/>BKT per topic]
+    H[service/Hints<br/>built-in hint, optional AI wording]
+    REP[service/ReportBuilder]
   end
   API --> AUTH --> SES
   SES -- is_correct only --> M
@@ -50,7 +58,7 @@ flowchart LR
 1. `POST /sessions` (or the previous answer) makes the server look up the
    student's mastery for the boss's topic and pick a tier:
    below 0.40 easy, above 0.75 hard, otherwise medium.
-2. `services/questions.py` builds a question from random numbers and computes
+2. `service/Questions.java` builds a question from random numbers and computes
    its answer. The question is saved as an `attempts` row, answer included.
    Only the text and four options go to the browser.
 3. The student picks an option. `POST /attempts/{id}/answer` sends the option
@@ -64,11 +72,11 @@ flowchart LR
 **What it is.** Bayesian Knowledge Tracing (BKT): for each student and each
 topic, one number `p` between 0 and 1, the probability that the student has
 learned the topic. It is updated after every answer. Code:
-`backend/services/mastery.py`. Tests: `backend/tests/test_mastery.py`.
+`service/Mastery.java`. Tests: `MasteryTest`, `MasteryApiTest`.
 
 **Its only input is whether the answer was right.** Not the camera, not the
 time taken, not whether a hint was used. The update function's signature is
-`update_mastery(p_mastery, is_correct)`; there is no parameter through which
+`updateMastery(pMastery, isCorrect)`; there is no parameter through which
 attention data could reach it, and a test asserts that.
 
 **The four parameters** (fixed, textbook-style values, not fitted to data):
@@ -129,7 +137,7 @@ the textbook behaviour to show what is being avoided.
 BKT moves quickly, so a stored value can reach 0.01 or 0.99 after one mission.
 Printed as "1%" or "99%", that reads like certainty, which a handful of answers
 cannot justify. So what people see is a presentation of the stored value, made
-in one place: `backend/services/mastery_display.py`.
+in one place: `service/MasteryDisplay.java`.
 
 | Shown | Rule |
 |---|---|
@@ -140,23 +148,23 @@ in one place: `backend/services/mastery_display.py`.
 What does **not** change:
 
 - The stored numbers. `p_mastery`, `mastery_before` and `mastery_after` keep the
-  model's own values, and `mastery.py` knows nothing about display.
+  model's own values, and `Mastery.java` knows nothing about display.
 - Any decision. Question difficulty, the "needs practice" list and which
   observation sentences appear all use the raw stored value. Only the number
   printed is the display value.
 
 The trade-off: a report cannot tell 96% from 99%. That is deliberate; the model
 cannot honestly tell them apart either. Tests
-(`backend/tests/test_mastery_display.py`) check that the shown value always lies
+(`MasteryDisplayTest`, `MasteryDisplayApiTest`) check that the shown value always lies
 within 5–95, that ordering between students is preserved, that bands match the
 difficulty thresholds, and that building a report leaves stored values
 untouched.
 
 ## Questions
 
-`backend/services/questions.py` has one small generator per boss per tier
+`service/Questions.java` has one small generator per boss per tier
 (6 × 3). Each picks random numbers, writes the question, and computes the
-answer, so the stored answer cannot be wrong. `tests/test_questions.py` checks
+answer, so the stored answer cannot be wrong. `QuestionsTest` checks
 this independently: it re-solves 300 questions for each of the 18 combinations
 from the question text alone and compares the result with the stored answer.
 
@@ -172,7 +180,7 @@ from the question text alone and compares the result with the stored answer.
 ### Story questions
 
 About half of all questions are told through the villain's own world instead of
-as a plain sum (`backend/services/story_questions.py`). Each villain has six
+as a plain sum (`service/StoryQuestions.java`). Each villain has six
 stories, two per tier, practising the same skill as the plain questions of that
 tier: the Goblin's pumpkin bombs and glider, Doc Ock's arms and reactor,
 Mysterio's illusions, Venom's symbiote, the Lizard's serum, Kingpin's empire.
@@ -181,14 +189,14 @@ hint written from the same numbers. Story text is kept to three lines or fewer.
 
 ### Backup questions
 
-`backend/services/question_bank.py` holds a fixed set of six questions per
+`service/QuestionBank.java` holds a fixed set of six questions per
 villain (two per tier), written and checked by hand. The game asks for
-questions through `question_or_backup`, which uses the generator and falls back
+questions through `questionOrBackup`, which uses the generator and falls back
 to this bank only if the generator raises an unexpected error. Questions never
 depend on an AI service, so an AI outage cannot stop a mission; the bank covers
 the one remaining way a question could fail to appear.
-`tests/test_story_questions.py` re-solves every story and every bank entry and
-plays a whole mission per villain on backup questions alone.
+`StoryQuestionsTest` re-solves every story and every bank entry and
+`GameApiTest` plays a whole mission per villain on backup questions alone.
 
 ## Hints and where AI is used
 
@@ -251,21 +259,22 @@ Demo accounts and real accounts can never be linked to each other.
 
 | # | Requirement | Test file |
 |---|---|---|
-| T1 | Gameplay without camera permission | `frontend/src/components/MissionPlayer.test.tsx`, `backend/tests/test_sessions.py` |
-| T2 | Gameplay with camera permission | `MissionPlayer.test.tsx`, `test_sessions.py` |
+| T1 | Gameplay without camera permission | `frontend/src/components/MissionPlayer.test.tsx`, `SessionsTest` |
+| T2 | Gameplay with camera permission | `MissionPlayer.test.tsx`, `SessionsTest` |
 | T3 | Camera permission denied or camera missing | `MissionPlayer.test.tsx` |
 | T4 | Camera switched off during a mission | `MissionPlayer.test.tsx` |
-| T5 | No webcam images uploaded | `MissionPlayer.test.tsx`, `test_sessions.py` |
-| T6 | Mastery unchanged by attention data | `backend/tests/test_mastery.py` |
-| T7 | Correct and incorrect answers update BKT properly | `test_mastery.py` |
-| T8 | Demo login unavailable when `DEMO_MODE=false` | `backend/tests/test_auth.py` |
-| T9 | Demo login reaches only seeded demo accounts | `test_auth.py`, `backend/tests/test_guardians.py` |
-| T10 | Parent and teacher access restrictions | `test_guardians.py`, `backend/tests/test_dashboard.py` |
-| T11 | Dashboard statistics match the database | `test_dashboard.py` |
-| T12 | Several children linked to one parent | `test_guardians.py`, `test_dashboard.py` |
+| T5 | No webcam images uploaded | `MissionPlayer.test.tsx`, `SessionsTest`, `ApiShapeTest` |
+| T6 | Mastery unchanged by attention data | `MasteryTest`, `MasteryApiTest` |
+| T7 | Correct and incorrect answers update BKT properly | `MasteryTest`, `MasteryApiTest` |
+| T8 | Demo login unavailable when `DEMO_MODE=false` | `AuthTest` |
+| T9 | Demo login reaches only seeded demo accounts | `AuthTest`, `GuardiansTest` |
+| T10 | Parent and teacher access restrictions | `GuardiansTest`, `DashboardTest` |
+| T11 | Dashboard statistics match the database | `DashboardTest` |
+| T12 | Several children linked to one parent | `GuardiansTest`, `DashboardTest` |
 
 Also covered: every question type at every level re-solved independently
-(`test_questions.py`), hint fallbacks (`test_hints.py`), the attention summary
+(`QuestionsTest`, `StoryQuestionsTest`), hint fallbacks (`HintsTest`), the API's
+JSON and error shapes (`ContractTest`), the attention summary
 logic (`frontend/src/lib/attention/summary.test.ts`), the demo banner
 (`frontend/src/App.test.tsx`), and the report screens
 (`frontend/src/components/dashboard/StudentReportView.test.tsx`,

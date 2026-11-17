@@ -20,9 +20,7 @@ import { chromium } from 'playwright-core';
 const APP = 'http://localhost:5173';
 const API = 'http://localhost:8001';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-// The Java backend: backend-java/ while it sits beside the old Python one, backend/ after that.
-const JAVA_BACKEND = path.resolve(HERE, '..', '..', 'backend-java');
-const BACKEND = existsSync(JAVA_BACKEND) ? JAVA_BACKEND : path.resolve(HERE, '..', '..', 'backend');
+const BACKEND = path.resolve(HERE, '..', '..', 'backend');
 
 const args = process.argv.slice(2);
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);

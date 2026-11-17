@@ -22,9 +22,9 @@ and a person has to run it.
 | Playing with the camera sends the four-number summary (T2) | `MissionPlayer.test.tsx` |
 | Permission denied, no camera, camera busy: one notice, game carries on (T3) | `MissionPlayer.test.tsx` |
 | Switching off mid-mission stops the camera and sends empty attention (T4) | `MissionPlayer.test.tsx` |
-| No image or video in any request (T5) | `MissionPlayer.test.tsx`, `backend/tests/test_attention.py` |
+| No image or video in any request (T5) | `MissionPlayer.test.tsx`, `SessionsTest`, `ApiShapeTest` (backend) |
 | The summary arithmetic (present %, on-screen %, blinks, calibration) | `lib/attention/summary.test.ts` |
-| Attention never changes mastery, difficulty or points | `backend/tests/test_mastery.py`, `test_attention.py` |
+| Attention never changes mastery, difficulty or points | `MasteryTest`, `MasteryApiTest` (backend) |
 | The test readout is off by default, text only, and changes nothing sent | `AttentionDebug.test.tsx` |
 
 ## What needs a real device
@@ -37,7 +37,7 @@ are sensible.
 
 ## 1. Setup
 
-1. Start the backend (`uvicorn main:app --port 8001 --reload` in `backend/`,
+1. Start the backend (`mvnw spring-boot:run` in `backend/`,
    with `DEMO_MODE=true` if you want the demo student) and the frontend
    (`npm run dev` in `frontend/`).
 2. Open the app on `http://localhost:5173/?attentionDebug=1` and sign in as a
@@ -126,8 +126,11 @@ Do these once, during case 1.
    python -c "import sqlite3; [print(r) for r in sqlite3.connect('mathverse.db').execute('select id, is_correct, face_present_pct, on_screen_pct, blink_rate_per_min, attention_score, attention_label from attempts order by id desc limit 10')]"
    ```
 
-   Run it from `backend/`. Rows answered with the camera off must show `None`
-   in all five attention columns, never 0.
+   Run it from `backend/` (any Python 3; it only reads the SQLite file, and
+   the backend itself no longer needs Python). Rows answered with the camera
+   off must show `None` in all five attention columns, never 0. If you know the
+   attempt ids, the backend can make the same checks itself:
+   `java -jar target/mathverse-backend-1.0.0.jar --verify-attempts "[{\"id\": 41, \"measured\": true}]"`.
 3. **Mastery does not depend on the camera.** With two fresh student accounts,
    play the same villain and give the same right and wrong answers in the same
    order, one with the camera on and one without. Points, level and the mastery

@@ -25,7 +25,7 @@ export class ApiError extends Error {
 
 function describeError(detail: unknown, status: number): string {
   if (typeof detail === 'string') return detail;
-  // FastAPI validation errors arrive as a list of {loc, msg}
+  // Validation errors (422) arrive as a list of {loc, msg}
   if (Array.isArray(detail) && detail.length > 0 && typeof detail[0]?.msg === 'string') {
     const field = Array.isArray(detail[0].loc) ? detail[0].loc[detail[0].loc.length - 1] : '';
     return field ? `${field}: ${detail[0].msg}` : detail[0].msg;
@@ -59,7 +59,7 @@ export async function api<T>(
   return res.json() as Promise<T>;
 }
 
-// ── Shapes returned by the backend (see backend/schemas.py) ──────────────────
+// ── Shapes returned by the backend (see backend/.../dto/) ────────────────────
 export type Role = 'student' | 'parent' | 'teacher';
 
 export interface User {

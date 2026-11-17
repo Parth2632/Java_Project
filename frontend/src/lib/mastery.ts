@@ -1,5 +1,5 @@
 // How mastery is shown on screen. Presentation only: the server sends a band
-// and a percentage already limited to 5-95 (backend/services/mastery_display.py).
+// and a percentage already limited to 5-95 (MasteryDisplay.java in the backend).
 // The band in words comes first; the percentage is an estimate.
 
 export type MasteryBand = 'needs_practice' | 'developing' | 'strong';

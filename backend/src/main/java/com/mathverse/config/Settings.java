@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * All configuration in one place (Python: config.py). Each value is read from an
- * environment variable of the same name, or from backend-java/.env.
+ * environment variable of the same name, or from backend/.env.
  */
 @Component
 public class Settings {
@@ -28,8 +28,8 @@ public class Settings {
     public Settings(Environment env) {
         jwtSecret = env.getProperty("JWT_SECRET_KEY", "").strip();
         if (jwtSecret.isEmpty()) {
-            throw new IllegalStateException("JWT_SECRET_KEY is not set. Copy backend-java/.env.example to "
-                    + "backend-java/.env and set JWT_SECRET_KEY to a long random string.");
+            throw new IllegalStateException("JWT_SECRET_KEY is not set. Copy backend/.env.example to "
+                    + "backend/.env and set JWT_SECRET_KEY to a long random string.");
         }
         // HS256 needs a key of at least 32 bytes; the JWT library refuses shorter ones.
         if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {

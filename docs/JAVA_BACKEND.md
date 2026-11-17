@@ -1,13 +1,18 @@
 # MathVerse Java backend: how it works
 
-The Java backend in `backend-java/` replaces the Python backend in `backend/`
-without the frontend noticing: same paths, JSON, status codes and error bodies.
+The Java backend in `backend/` replaced the original Python backend without
+the frontend noticing: same paths, JSON, status codes and error bodies.
 The Python code is the specification, and each Java file names its Python
 partner. This file grows by one section per phase.
 
+During phases 1–5 the Java code lived in `backend-java/`, beside the Python
+code in `backend/`. In phase 6 (2026-11-17) it moved to `backend/` and the
+Python code was removed; it remains in the git history (for example commit
+`9db88b9`). Paths below are given as they are now.
+
 ## Running it
 
-From `backend-java/`:
+From `backend/`:
 
 ```bash
 copy .env.example .env      # then set JWT_SECRET_KEY (at least 32 characters)
@@ -196,7 +201,7 @@ half-saved.
 
 ### Running the seed command
 
-From `backend-java/` (needs `JWT_SECRET_KEY`, like the server):
+From `backend/` (needs `JWT_SECRET_KEY`, like the server):
 
 ```bash
 mvnw spring-boot:run -Dspring-boot.run.arguments=--demo
@@ -281,8 +286,8 @@ switched off for this command, because the caller reads the output as JSON).
 
 `frontend/scripts/camera-check.mjs` was changed in one place, agreed with the
 user on 2026-11-17: it calls this command instead of the Python script, and
-looks for the backend in `backend-java/` first, then `backend/`, so it keeps
-working after the Java backend moves to `backend/`. It needs the jar built
+looked for the backend in `backend-java/` first, then `backend/`; since phase 6
+it simply uses `backend/`. It needs the jar built
 first (`mvnw package`) and `java` on the PATH. Nothing in the app itself
 (`frontend/src`) was changed.
 
