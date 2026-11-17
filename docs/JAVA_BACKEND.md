@@ -232,7 +232,40 @@ exits without starting the web server. Demo login also needs `DEMO_MODE=true`.
 - **`--reset`** uses JPA's schema manager to drop and recreate the tables,
   as `drop_all` and `create_all` did in Python.
 
-## Phase 5 (started): the camera check's row check
+## Phase 5: proof with the unchanged frontend (2026-11-17)
+
+Run on this machine with the Java backend on port 8001 and the frontend on 5173.
+
+| Check | Result |
+|---|---|
+| Frontend `npm run test` | 225 passed |
+| Frontend `typecheck`, `build` | pass |
+| Frontend `lint` | 0 errors, the 2 old warnings |
+| Walkthrough in a browser, by an assistant | sign-up with a 422 shown as "password: String should have at least 8 characters"; a full Goblin mission won (one hint, one wrong answer, +1320 points exactly as the rules give, level 2); profile; parent sign-up, wrong code refused, link with the code in lower case, full parent dashboard; demo teacher login with the demo child's dashboard. No browser errors other than the two caused on purpose. |
+| `npm run check:camera` | 32 of 32 passed in 4 of 5 runs. In one run the first scenario timed out waiting 30 s for the camera to start in headless Chrome (before any answer was sent); not seen again in three further runs; cause unknown. |
+| Same 81 requests to the Python and Java servers | Same status code for all 81. Same JSON fields, types and values everywhere except the three differences below. |
+
+### Differences between the two backends that remain (deliberately)
+
+1. **422 entries have no `input` or `ctx`.** Pydantic adds the rejected value
+   and limits (e.g. `"ctx": {"min_length": 8}`) to each error. The Java
+   errors have `type`, `loc` and `msg`; the frontend reads only `loc` and `msg`.
+2. **Bad email wording.** Pydantic names the exact reason ("An email address
+   must have an @-sign."); Java says "The email address is not valid." Both
+   start "value is not a valid email address:".
+3. **CORS pre-check header list.** Python's answer lists every allowed header;
+   Java's lists the ones the browser asked about. Browsers accept both.
+
+### Fixed during phase 5 (found by the side-by-side comparison)
+
+- A number sent where text is expected (`"name": 5`, `"boss_id": 5`) was
+  quietly turned into text; it is now 422, as in Python (`config/JsonConfig`).
+- A wrong password no longer carries `WWW-Authenticate: Bearer`; only a
+  missing or invalid token does, as in Python.
+- Error `type` words now match Pydantic: `string_too_short`, `string_too_long`,
+  `int_from_float`; a broken JSON body reports where it broke.
+
+## The camera check's row check
 
 `npm run check:camera` ends by checking the database rows its answers created.
 In Python that was `backend/tools/verify_attempts.py`. It is now a command of
@@ -258,8 +291,8 @@ first (`mvnw package`) and `java` on the PATH. Nothing in the app itself
 The Python suite in this repository has **443** tests (the handoff document
 says 351; that was an earlier count). All 443 pass on the Python backend.
 
-Every Python test now has a Java counterpart: 443 ported, plus 56 Java-only
-checks, 499 in all.
+Every Python test now has a Java counterpart: 443 ported, plus 60 Java-only
+checks, 503 in all.
 
 | Python file | Python | Java file(s) | Java |
 |---|---|---|---|
@@ -273,7 +306,7 @@ checks, 499 in all.
 | `test_guardians.py` | 8 | `GuardiansTest` | 8 (+2 Java-only) |
 | `test_reports.py` | 2 | `ReportsTest` | 2 |
 | `test_dashboard.py` | 13 | `DashboardTest` | 13 |
-| (none) | | `ContractTest` | 43 Java-only: JSON names, error bodies, tokens, CORS, emails |
+| (none) | | `ContractTest` | 47 Java-only: JSON names, error bodies, tokens, CORS, emails |
 | (none) | | `SeedTest` | 4 Java-only: demo history rules, same data every time, `--demo` and `--reset` |
 | (`tools/verify_attempts.py`, untested) | | `VerifyAttemptsTest` | 3 Java-only: real rows pass, each kind of problem is reported |
 

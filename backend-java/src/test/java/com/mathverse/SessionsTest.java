@@ -249,8 +249,11 @@ class SessionsTest extends ApiTest {
         String path = "/attempts/" + attemptId + "/answer";
         assertThat(postJson(path, Map.of("selected_index", 4, "response_time_ms", 1000), student).status())
                 .isEqualTo(422);
-        assertThat(postJson(path, Map.of("selected_index", 1.5, "response_time_ms", 1000), student).status())
-                .isEqualTo(422);
+        Response fractional = postJson(path, Map.of("selected_index", 1.5, "response_time_ms", 1000), student);
+        assertThat(fractional.status()).isEqualTo(422);
+        assertThat(fractional.json().get("detail").get(0).get("type").asString()).isEqualTo("int_from_float");
+        assertThat(start(student, "5").status()).isEqualTo(404); // text "5": an unknown mission
+        assertThat(postJson("/sessions", Map.of("boss_id", 5), student).status()).isEqualTo(422); // a number
         assertThat(postJson(path, Map.of("selected_index", 0), student).status()).isEqualTo(422);
         Map<String, Object> badAttention = new HashMap<>(ATTENTION);
         badAttention.put("on_screen_pct", 101);

@@ -112,6 +112,42 @@ class ContractTest extends ApiTest {
         JsonNode problem = res.json().get("detail").get(0);
         assertThat(problem.get("loc").toString()).isEqualTo("[\"body\",\"password\"]");
         assertThat(problem.get("msg").asString()).isEqualTo("String should have at least 8 characters");
+        assertThat(problem.get("type").asString()).isEqualTo("string_too_short");
+    }
+
+    // ── found by comparing the two servers side by side (phase 5) ────────────
+
+    @Test
+    void numberWhereTextIsExpectedIsRejected() {
+        Response res = postJson("/auth/register", Map.of("name", 5, "email", "x@example.com",
+                "password", PASSWORD, "role", "student"));
+        assertThat(res.status()).isEqualTo(422);
+        JsonNode problem = res.json().get("detail").get(0);
+        assertThat(problem.get("loc").toString()).isEqualTo("[\"body\",\"name\"]");
+        assertThat(problem.get("type").asString()).isEqualTo("string_type");
+        assertThat(users.count()).isZero();
+        assertThat(postJson("/auth/login", Map.of("email", "x@example.com", "password", true)).status())
+                .isEqualTo(422);
+    }
+
+    @Test
+    void wrongPasswordHasNoBearerChallenge() {
+        Response res = postJson("/auth/login", Map.of("email", "ghost@example.com", "password", "nope-nope"));
+        assertThat(res.status()).isEqualTo(401);
+        assertThat(res.raw().getHeader("WWW-Authenticate")).isNull();
+    }
+
+    @Test
+    void tooLongTextIsCalledTooLong() {
+        Response res = postJson("/auth/register", Map.of("name", "x".repeat(81), "email", "x@example.com",
+                "password", PASSWORD, "role", "student"));
+        assertThat(res.json().get("detail").get(0).get("type").asString()).isEqualTo("string_too_long");
+    }
+
+    @Test
+    void brokenJsonReportsWhereItBroke() {
+        Response res = postJson("/auth/login", "{\"email\": ");
+        assertThat(res.json().get("detail").get(0).get("loc").get(1).asInt()).isPositive();
     }
 
     @Test

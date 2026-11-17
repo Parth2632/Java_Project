@@ -42,7 +42,7 @@ public class ErrorHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Object> apiError(ApiException e) {
         ResponseEntity.BodyBuilder response = ResponseEntity.status(e.status());
-        if (e.status() == 401) {
+        if (e.asksForToken()) { // only "Please sign in.", as in Python; not a wrong password
             response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
         return response.body(Map.of("detail", e.detail()));
@@ -62,7 +62,8 @@ public class ErrorHandler {
             for (String part : error.getField().split("\\.")) {
                 loc.add(snakeCase(part));
             }
-            problems.add(new FieldProblem(pydanticType(error.getCode()), loc, error.getDefaultMessage()));
+            problems.add(new FieldProblem(pydanticType(error.getCode(), error.getDefaultMessage()), loc,
+                    error.getDefaultMessage()));
         }
         return unprocessable(problems);
     }
@@ -81,10 +82,19 @@ public class ErrorHandler {
                 return unprocessable(List.of(new FieldProblem("model_attributes_type", loc,
                         "Input should be a valid dictionary or object to extract fields from")));
             }
+            if (String.valueOf(mismatch.getOriginalMessage()).contains("Floating-point")) {
+                // e.g. 1.5 for a whole number
+                return unprocessable(List.of(new FieldProblem("int_from_float", loc,
+                        "Input should be a valid integer, got a number with a fractional part")));
+            }
             return unprocessable(List.of(wrongType(loc, mismatch.getTargetType())));
         }
         if (cause instanceof StreamReadException parse) {
-            long offset = parse.getLocation() == null ? 0 : Math.max(0, parse.getLocation().getCharOffset());
+            // Where in the text the JSON broke, as Python reports it.
+            long offset = 0;
+            if (parse.getLocation() != null) {
+                offset = Math.max(0, Math.max(parse.getLocation().getCharOffset(), parse.getLocation().getByteOffset()));
+            }
             return unprocessable(List.of(new FieldProblem("json_invalid", List.of("body", offset),
                     "JSON decode error")));
         }
@@ -187,14 +197,15 @@ public class ErrorHandler {
         return m.replaceAll(match -> "_" + match.group(1).toLowerCase());
     }
 
-    /** The Pydantic error type closest to each Bean Validation check. */
-    private static String pydanticType(String constraint) {
+    /** The Pydantic error type for each Bean Validation check. */
+    private static String pydanticType(String constraint, String message) {
         if (constraint == null) {
             return "value_error";
         }
         return switch (constraint) {
             case "NotNull" -> "missing";
-            case "Size" -> "string_length";
+            // Each @Size carries one bound, and its message says which.
+            case "Size" -> String.valueOf(message).contains("at least") ? "string_too_short" : "string_too_long";
             case "Pattern" -> "literal_error";
             case "Min", "DecimalMin" -> "greater_than_equal";
             case "Max", "DecimalMax" -> "less_than_equal";

@@ -10,12 +10,18 @@ public class ApiException extends RuntimeException {
 
     private final int status;
     private final Object detail;
+    private final boolean asksForToken;
 
     /** detail is a message, or for 422 a list of {@link FieldProblem}. */
     public ApiException(int status, Object detail) {
+        this(status, detail, false);
+    }
+
+    private ApiException(int status, Object detail, boolean asksForToken) {
         super(String.valueOf(detail));
         this.status = status;
         this.detail = detail;
+        this.asksForToken = asksForToken;
     }
 
     public int status() {
@@ -26,9 +32,14 @@ public class ApiException extends RuntimeException {
         return detail;
     }
 
-    /** 401, sent with a WWW-Authenticate: Bearer header by {@link ErrorHandler}. */
+    /** True when the response should carry a WWW-Authenticate: Bearer header. */
+    public boolean asksForToken() {
+        return asksForToken;
+    }
+
+    /** 401 for a missing or invalid token, sent with a WWW-Authenticate: Bearer header. */
     public static ApiException signInRequired() {
-        return new ApiException(401, "Please sign in.");
+        return new ApiException(401, "Please sign in.", true);
     }
 
     /** 422 for one bad value, shaped like a FastAPI validation error. */
