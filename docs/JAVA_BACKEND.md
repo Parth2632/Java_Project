@@ -183,21 +183,80 @@ half-saved.
   replaced by `ApiShapeTest`, which inspects every real endpoint, parameter,
   content type and request/response field (nested ones included) directly.
 
+## Phase 4: guardians, reports, demo data
+
+| Java | Python | What it does |
+|---|---|---|
+| `controller/GuardianController`, `service/Guardians` | `routers/guardians.py` | `POST /guardians/links` (201), `GET /guardians/students`. Parents and teachers only. |
+| `controller/ReportController` | `routers/reports.py` | `GET /students/{student_id}/report?tz_offset_minutes=…` |
+| `security/Access` | `deps.student_for_viewer` | The student may see their own report; a guardian only a linked student's. Everyone else: 403, also for ids that do not exist. |
+| `service/ReportBuilder` | `services/report_builder.py` | Every report number, counted from stored rows. |
+| `service/DemoData`, `service/SeedCommand` | `seed.py` | The demo accounts with three replayed missions; the `--demo` and `--reset` commands. |
+| `dto/ReportDtos` | `schemas.py` (Guardians, Reports) | Response shapes. |
+
+### Running the seed command
+
+From `backend-java/` (needs `JWT_SECRET_KEY`, like the server):
+
+```bash
+mvnw spring-boot:run -Dspring-boot.run.arguments=--demo
+```
+
+`--demo` creates the three demo accounts with history and is safe to run
+again. `--reset` deletes all data and recreates empty tables: do not run it on
+a database you want to keep. With either flag the program does its job and
+exits without starting the web server. Demo login also needs `DEMO_MODE=true`.
+
+### Decisions worth explaining
+
+- **Links are the only way in.** A guardian finds a student only by the link
+  code the student's own account shows. A wrong code, a code for a demo child
+  (or, for a demo guardian, a real child's code) all give the same 404, so
+  nothing is revealed.
+- **Attention stays in its own section.** Accuracy, mastery, trends, badges and
+  observations are computed from answers only. Attention averages skip
+  unmeasured questions (they are never counted as 0), and a day without camera
+  data shows `null`, not 0.
+- **Rules copied exactly.** Python's rounding, its tie-breaking in "weakest" and
+  "strongest" topic (the first one listed wins), the 14-day window, the
+  thresholds for observations (10 answers, 5 per topic, 5 per week) and the
+  badge rules are all the same.
+- **Dates and times.** Days follow the viewer's clock (`tz_offset_minutes`,
+  -840 to 840). Times are sent as Python writes them, e.g.
+  `2026-11-15T13:25:29.281000`. SQLite through Java keeps times to the
+  millisecond, so the last three digits are 0; Python kept microseconds.
+- **The demo data is sample data, and different.** It replays the same three
+  missions with the same answers as Python, so counts, wins and the level are
+  the same (30 answers, 2 wins, level 3). The questions and the camera numbers
+  come from Java's random numbers, so they differ from Python's demo.
+- **`--reset`** uses JPA's schema manager to drop and recreate the tables,
+  as `drop_all` and `create_all` did in Python.
+
 ## Test counts
 
 The Python suite in this repository has **443** tests (the handoff document
 says 351; that was an earlier count). All 443 pass on the Python backend.
 
-| Python file | Python | Java file | Java now | Waiting for |
-|---|---|---|---|---|
-| `test_auth.py` | 25 | `AuthTest` | 23 | 2 token cases need phase 4 endpoints; report checks in the last test need phase 4 |
-| `test_mastery.py` | 207 | `MasteryTest` + `MasteryApiTest` | 203 + 4 | |
-| `test_mastery_display.py` | 11 | `MasteryDisplayTest` + `GameApiTest` | 6 + 1 (+1 Java-only) | 4 report tests (phase 4) |
-| `test_hints.py` | 8 | `HintsTest` + `GameApiTest` | 7 + 1 | |
-| `test_questions.py` | 61 | `QuestionsTest` | 61 | |
-| `test_story_questions.py` | 92 | `StoryQuestionsTest` + `GameApiTest` | 86 + 6 | |
-| `test_sessions.py` | 16 | `SessionsTest` + `ApiShapeTest` | 15 + 1 (+3 Java-only) | report checks in the wrong-answer test (phase 4) |
-| `test_guardians.py` | 8 | | 0 | phase 4 |
-| `test_reports.py` | 2 | | 0 | phase 4 |
-| `test_dashboard.py` | 13 | | 0 | phase 4 |
-| (none) | | `ContractTest` | 43 | Java-only: JSON names, error bodies, tokens, CORS, emails |
+Every Python test now has a Java counterpart: 443 ported, plus 53 Java-only
+checks, 496 in all.
+
+| Python file | Python | Java file(s) | Java |
+|---|---|---|---|
+| `test_auth.py` | 25 | `AuthTest` | 25 |
+| `test_mastery.py` | 207 | `MasteryTest` + `MasteryApiTest` | 203 + 4 |
+| `test_mastery_display.py` | 11 | `MasteryDisplayTest` + `GameApiTest` + `MasteryDisplayApiTest` | 6 + 1 + 4 (+1 Java-only) |
+| `test_hints.py` | 8 | `HintsTest` + `GameApiTest` | 7 + 1 |
+| `test_questions.py` | 61 | `QuestionsTest` | 61 |
+| `test_story_questions.py` | 92 | `StoryQuestionsTest` + `GameApiTest` | 86 + 6 |
+| `test_sessions.py` | 16 | `SessionsTest` + `ApiShapeTest` | 15 + 1 (+3 Java-only) |
+| `test_guardians.py` | 8 | `GuardiansTest` | 8 (+2 Java-only) |
+| `test_reports.py` | 2 | `ReportsTest` | 2 |
+| `test_dashboard.py` | 13 | `DashboardTest` | 13 |
+| (none) | | `ContractTest` | 43 Java-only: JSON names, error bodies, tokens, CORS, emails |
+| (none) | | `SeedTest` | 4 Java-only: demo history rules, same data every time, `--demo` and `--reset` |
+
+T1–T12 in Java: T1, T2 and T5 in `SessionsTest` (T5 also `ApiShapeTest`); T6
+and T7 in `MasteryTest` and `MasteryApiTest`; T8 and T9 in `AuthTest` (T9 also
+`GuardiansTest`); T10 in `GuardiansTest` and `DashboardTest`; T11 in
+`DashboardTest`; T12 in `GuardiansTest` and `DashboardTest`. T3 and T4 are
+frontend tests only.

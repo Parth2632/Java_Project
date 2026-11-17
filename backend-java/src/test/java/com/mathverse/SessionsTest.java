@@ -53,8 +53,6 @@ class SessionsTest extends ApiTest {
 
     // test_wrong_answer_is_stored_as_wrong_and_lowers_mastery
     // Regression for the old bug where any score above 0 counted as correct.
-    // The Python test also checks the report (accuracy 0, no correct answers);
-    // that part is added with the report endpoint in phase 4.
     @Test
     void wrongAnswerIsStoredAsWrongAndLowersMastery() {
         Account student = register();
@@ -65,6 +63,10 @@ class SessionsTest extends ApiTest {
         assertThat(body.get("session").get("wrong_count").asInt()).isEqualTo(1);
         assertThat(body.get("session").get("streak").asInt()).isZero();
         assertThat(attempts.findById(attemptId).orElseThrow().getIsCorrect()).isFalse();
+
+        JsonNode report = getPath("/students/" + student.id() + "/report", student).json();
+        assertThat(report.get("accuracy_pct").asInt()).isZero();
+        assertThat(report.get("correct_answers").asInt()).isZero();
     }
 
     // test_timeout_counts_as_wrong_and_earns_nothing

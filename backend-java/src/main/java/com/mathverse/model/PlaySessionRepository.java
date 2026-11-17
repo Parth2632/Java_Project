@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface PlaySessionRepository extends JpaRepository<PlaySession, Long> {
 
+    List<PlaySession> findByStudentId(Long studentId);
+
     List<PlaySession> findByStudentIdAndStatus(Long studentId, String status);
 
     long countByStudentIdAndStatus(Long studentId, String status);

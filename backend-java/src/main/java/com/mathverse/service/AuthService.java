@@ -77,7 +77,7 @@ public class AuthService {
             throw new ApiException(404, "Not found");
         }
         User user = users.findDemoAccount(role).orElseThrow(() -> new ApiException(404,
-                "Demo accounts have not been created. Run the seed command with --demo (see README)."));
+                "Demo accounts have not been created. Run `mvnw spring-boot:run -Dspring-boot.run.arguments=--demo`."));
         return tokenResponse(user);
     }
 

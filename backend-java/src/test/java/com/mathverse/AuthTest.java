@@ -80,10 +80,8 @@ class AuthTest extends ApiTest {
     }
 
     // test_endpoints_require_a_token
-    // Python also checks /guardians/students and /students/1/report; those
-    // endpoints arrive in phase 4 and are added to this list then.
     @ParameterizedTest
-    @ValueSource(strings = {"/auth/me", "/students/me/progress"})
+    @ValueSource(strings = {"/auth/me", "/students/me/progress", "/guardians/students", "/students/1/report"})
     void endpointsRequireAToken(String path) {
         assertThat(getPath(path).status()).isEqualTo(401);
         assertThat(send(get(path).header("Authorization", "Bearer not-a-real-token"), null).status())
@@ -150,9 +148,6 @@ class AuthTest extends ApiTest {
     }
 
     // test_demo_data_is_flagged_and_seeding_is_idempotent
-    // The Python test also checks the demo student's report (30 answers, some with a
-    // camera estimate, some without). Reports and the demo history arrive in phase 4,
-    // and those checks are added here then.
     @Test
     void demoDataIsFlaggedAndSeedingIsIdempotent() {
         settings.setDemoMode(true);
@@ -162,6 +157,13 @@ class AuthTest extends ApiTest {
 
         String token = postEmpty("/auth/demo/student").json().get("access_token").asString();
         JsonNode me = send(get("/auth/me").header("Authorization", "Bearer " + token), null).json();
+        JsonNode report = send(get("/students/" + me.get("id").asLong() + "/report")
+                .header("Authorization", "Bearer " + token), null).json();
         assertThat(me.get("is_demo").asBoolean()).isTrue();
+        assertThat(report.get("is_demo").asBoolean()).isTrue();
+        assertThat(report.get("questions_answered").asInt()).isEqualTo(30);
+        // some demo questions were measured, some were not (camera off)
+        int measured = report.get("attention").get("measured_questions").asInt();
+        assertThat(measured).isGreaterThan(0).isLessThan(report.get("attention").get("total_questions").asInt());
     }
 }
