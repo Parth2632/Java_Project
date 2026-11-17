@@ -20,7 +20,9 @@ import { chromium } from 'playwright-core';
 const APP = 'http://localhost:5173';
 const API = 'http://localhost:8001';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BACKEND = path.resolve(HERE, '..', '..', 'backend');
+// The Java backend: backend-java/ while it sits beside the old Python one, backend/ after that.
+const JAVA_BACKEND = path.resolve(HERE, '..', '..', 'backend-java');
+const BACKEND = existsSync(JAVA_BACKEND) ? JAVA_BACKEND : path.resolve(HERE, '..', '..', 'backend');
 
 const args = process.argv.slice(2);
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
@@ -228,9 +230,11 @@ function privacy(missions) {
 function database(missions) {
   const name = 'stored rows';
   const sent = missions.flatMap((m) => m.answers()).map((a) => ({ id: a.attemptId, measured: a.attention !== null }));
-  const python = path.join(BACKEND, 'venv', 'Scripts', 'python.exe');
-  const out = execFileSync(existsSync(python) ? python : 'python', [path.join(BACKEND, 'tools', 'verify_attempts.py'), JSON.stringify(sent)], { cwd: BACKEND, encoding: 'utf8' });
-  for (const line of JSON.parse(out)) record(name, line.check, line.pass, line.detail);
+  // The backend's own row check (VerifyAttemptsCommand). It only reads the database.
+  const jar = path.join(BACKEND, 'target', 'mathverse-backend-1.0.0.jar');
+  if (!existsSync(jar)) throw new Error(`build the backend first (mvnw package in ${path.basename(BACKEND)})`);
+  const out = execFileSync('java', ['--enable-native-access=ALL-UNNAMED', '-jar', jar, '--verify-attempts', JSON.stringify(sent)], { cwd: BACKEND, encoding: 'utf8' });
+  for (const line of JSON.parse(out.trim().split('\n').pop())) record(name, line.check, line.pass, line.detail);
 }
 
 const token = await signIn();

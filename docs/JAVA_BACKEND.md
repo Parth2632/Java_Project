@@ -232,13 +232,34 @@ exits without starting the web server. Demo login also needs `DEMO_MODE=true`.
 - **`--reset`** uses JPA's schema manager to drop and recreate the tables,
   as `drop_all` and `create_all` did in Python.
 
+## Phase 5 (started): the camera check's row check
+
+`npm run check:camera` ends by checking the database rows its answers created.
+In Python that was `backend/tools/verify_attempts.py`. It is now a command of
+the Java backend, `service/VerifyAttemptsCommand`, with the same four checks
+and the same wording:
+
+```bash
+java -jar target/mathverse-backend-1.0.0.jar --verify-attempts "[{\"id\": 12, \"measured\": true}]"
+```
+
+It only reads, and it prints one line of JSON (Spring's own log output is
+switched off for this command, because the caller reads the output as JSON).
+
+`frontend/scripts/camera-check.mjs` was changed in one place, agreed with the
+user on 2026-11-17: it calls this command instead of the Python script, and
+looks for the backend in `backend-java/` first, then `backend/`, so it keeps
+working after the Java backend moves to `backend/`. It needs the jar built
+first (`mvnw package`) and `java` on the PATH. Nothing in the app itself
+(`frontend/src`) was changed.
+
 ## Test counts
 
 The Python suite in this repository has **443** tests (the handoff document
 says 351; that was an earlier count). All 443 pass on the Python backend.
 
-Every Python test now has a Java counterpart: 443 ported, plus 53 Java-only
-checks, 496 in all.
+Every Python test now has a Java counterpart: 443 ported, plus 56 Java-only
+checks, 499 in all.
 
 | Python file | Python | Java file(s) | Java |
 |---|---|---|---|
@@ -254,6 +275,7 @@ checks, 496 in all.
 | `test_dashboard.py` | 13 | `DashboardTest` | 13 |
 | (none) | | `ContractTest` | 43 Java-only: JSON names, error bodies, tokens, CORS, emails |
 | (none) | | `SeedTest` | 4 Java-only: demo history rules, same data every time, `--demo` and `--reset` |
+| (`tools/verify_attempts.py`, untested) | | `VerifyAttemptsTest` | 3 Java-only: real rows pass, each kind of problem is reported |
 
 T1–T12 in Java: T1, T2 and T5 in `SessionsTest` (T5 also `ApiShapeTest`); T6
 and T7 in `MasteryTest` and `MasteryApiTest`; T8 and T9 in `AuthTest` (T9 also
