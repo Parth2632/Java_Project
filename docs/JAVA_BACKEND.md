@@ -95,7 +95,65 @@ nothing has to be installed except Java 21 or newer.
 an in-memory SQLite database, empties it before each test, and offers
 `register(...)`, `postJson(...)` and `getPath(...)` helpers.
 
-| Python file | Python tests | Java file | Java tests | Notes |
+## Phase 2: game logic (no endpoints)
+
+All of these are plain Java classes with static methods, except `Hints`, which
+needs the settings. None of them touches the database or the web layer.
+
+| Java (`service/`) | Python (`services/`) | What it does |
+|---|---|---|
+| `Mastery` | `mastery.py` | BKT update and the difficulty bands. Same four parameters, same 0.01–0.99 limits, learning step only after a correct answer. |
+| `MasteryDisplay` | `mastery_display.py` | Band in words, percentage limited to 5–95 for display only. |
+| `Game` | `game.py` | Points, streak and speed bonus, victory bonus, 7 to win and 7 to lose. Levels and progress need the database and come in phase 3. |
+| `Curriculum` | `curriculum.py` | The six bosses, their topics and unlock order. |
+| `Attention` | `attention.py` | Score and label from the two percentages. Never read by anything academic. |
+| `Questions`, `StoryQuestions` | `questions.py`, `story_questions.py` | The generator: random numbers, computed answer, hint from the same numbers. About half are stories. |
+| `QuestionBank` | `question_bank.py` | 36 fixed backup questions, used only if the generator throws. |
+| `Hints`, `HintWriter`, `GroqHintWriter` | `hints.py` | The built-in hint, optionally reworded by Groq (6 s limit, falls back to the built-in hint, never needed). |
+| `Rng` | `random.Random` | `randint`, `choice`, `shuffle` with Python's meaning. |
+| `Rounding` | `round()` | Python's rounding, halves to even. |
+
+### Decisions worth explaining
+
+- **Same wording as Python, checked.** Question texts and hints were copied by
+  hand. To check the copy, every question and hint shape (digits replaced by N)
+  over 3,000 seeds per boss and tier was dumped from both backends and
+  compared: all 68 forms are identical. The numbers themselves differ, because
+  Java and Python draw different random numbers from the same seed.
+- **Rounding.** Python's `round()` rounds an exact half to the even neighbour
+  (`round(12.5) == 12`). `Math.round` would give 13, so some mastery and report
+  percentages would differ by one. `Rounding` copies Python's rule.
+- **Seeds.** `java.util.Random` gives nearly the same first number for seeds 0,
+  1, 2, ..., which made tests with consecutive seeds pick the same backup
+  question every time. `Rng` mixes the seed first. A given seed still gives the
+  same sequence every run.
+- **No attention input, by construction.** `Mastery.updateMastery(pMastery,
+  isCorrect)` and `Hints.hintFor(questionText, topic, plainHint)` have no
+  parameter that could carry attention data. Tests check the parameter lists by
+  reflection and check that the code never mentions attention words.
+- **The AI only rewords.** `GroqHintWriter` is given the verified hint and asked
+  to re-say it. Without `GROQ_API_KEY` it is never called. Any error, an empty
+  answer or one over 400 characters gives the built-in hint. Questions never use
+  it (a test checks the question code never mentions it).
+- **Tests replace parts on purpose.** Where the Python tests use `monkeypatch`,
+  the Java code offers one plain switch: `QuestionBank.useGeneratorForTests(...)`
+  to break the generator, and a stand-in `HintWriter` for the AI.
+
+## Test counts
+
+The Python suite in this repository has **443** tests (the handoff document
+says 351; that was an earlier count). All 443 pass on the Python backend.
+
+| Python file | Python | Java file | Java now | Waiting for |
 |---|---|---|---|---|
-| `test_auth.py` | 25 | `AuthTest` | 22 | 3 cases of `test_endpoints_require_a_token` wait for their endpoints (phases 3 and 4); the report checks in the last test wait for phase 4 |
-| (none) | | `ContractTest` | 43 | JSON names, error bodies, tokens, CORS, emails |
+| `test_auth.py` | 25 | `AuthTest` | 22 | 3 token cases need phase 3/4 endpoints; report checks in the last test need phase 4 |
+| `test_mastery.py` | 207 | `MasteryTest` | 203 | 4 API tests (phase 3) |
+| `test_mastery_display.py` | 11 | `MasteryDisplayTest` | 6 (+1 Java-only) | 5 API tests (phases 3 and 4) |
+| `test_hints.py` | 8 | `HintsTest` | 7 | 1 API test (phase 3) |
+| `test_questions.py` | 61 | `QuestionsTest` | 61 | |
+| `test_story_questions.py` | 92 | `StoryQuestionsTest` | 86 | 6 API tests (phase 3) |
+| `test_sessions.py` | 16 | | 0 | phase 3 |
+| `test_guardians.py` | 8 | | 0 | phase 4 |
+| `test_reports.py` | 2 | | 0 | phase 4 |
+| `test_dashboard.py` | 13 | | 0 | phase 4 |
+| (none) | | `ContractTest` | 43 | Java-only: JSON names, error bodies, tokens, CORS, emails |
