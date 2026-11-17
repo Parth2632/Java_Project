@@ -80,10 +80,10 @@ class AuthTest extends ApiTest {
     }
 
     // test_endpoints_require_a_token
-    // Python also checks /students/me/progress, /guardians/students and /students/1/report;
-    // those endpoints arrive in phases 3 and 4 and are added to this list then.
+    // Python also checks /guardians/students and /students/1/report; those
+    // endpoints arrive in phase 4 and are added to this list then.
     @ParameterizedTest
-    @ValueSource(strings = {"/auth/me"})
+    @ValueSource(strings = {"/auth/me", "/students/me/progress"})
     void endpointsRequireAToken(String path) {
         assertThat(getPath(path).status()).isEqualTo(401);
         assertThat(send(get(path).header("Authorization", "Bearer not-a-real-token"), null).status())

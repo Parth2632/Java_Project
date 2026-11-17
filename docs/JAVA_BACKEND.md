@@ -139,6 +139,50 @@ needs the settings. None of them touches the database or the web layer.
   the Java code offers one plain switch: `QuestionBank.useGeneratorForTests(...)`
   to break the generator, and a stand-in `HintWriter` for the AI.
 
+## Phase 3: missions
+
+| Java | Python | What it does |
+|---|---|---|
+| `controller/SessionController` | `routers/sessions.py` | The four student-only endpoints below. |
+| `service/Missions` | `routers/sessions.py` | Start a mission, hint, answer. |
+| `service/Progress` | `services/game.py` | Missions won, level (1 + different bosses beaten), progress summary. |
+| `dto/GameDtos` | `schemas.py` (Game part) | Request and response shapes. |
+
+Endpoints: `GET /students/me/progress`, `POST /sessions` (201),
+`GET /attempts/{attempt_id}/hint`, `POST /attempts/{attempt_id}/answer`.
+
+### How an answer is handled (`Missions.answer`)
+
+1. Find the attempt. Someone else's attempt gives 404, not 403, so attempt ids
+   cannot be probed. Already answered, or the mission is over: 409.
+2. **Academic track.** Correct means the chosen index equals the stored one; a
+   time-out (`selected_index: null`) is wrong. Mastery is updated from
+   right/wrong only. Points come from correctness, the streak and the time.
+3. **Attention track.** The four numbers are copied onto the attempt with a
+   score and label, or every column stays NULL when the camera was not used.
+   Nothing in the academic track reads them.
+4. Update the mission: 7 correct wins (plus the victory bonus and a possible
+   new level), 7 wrong loses. If it is still going, the next question is
+   generated and stored, and sent without its answer.
+
+All of this is one database transaction, so a failure part-way leaves nothing
+half-saved.
+
+### Decisions worth explaining
+
+- **The user is reloaded inside the transaction.** The sign-in check loads the
+  user at the start of the request; the answer code loads the current row again
+  before changing points and level, so it never writes stale values.
+- **The hint is not one transaction.** Marking "hint used" is saved first, then
+  the hint is fetched. The AI service can take up to 6 seconds, and the single
+  database connection is not held while waiting.
+- **Fractional numbers are rejected.** `selected_index: 1.5` gives 422, as in
+  Python; by default the JSON library would have quietly cut it to 1.
+- **No /openapi.json.** FastAPI publishes a description of the API there; the
+  frontend never uses it. The Python test that searched it for image fields is
+  replaced by `ApiShapeTest`, which inspects every real endpoint, parameter,
+  content type and request/response field (nested ones included) directly.
+
 ## Test counts
 
 The Python suite in this repository has **443** tests (the handoff document
@@ -146,13 +190,13 @@ says 351; that was an earlier count). All 443 pass on the Python backend.
 
 | Python file | Python | Java file | Java now | Waiting for |
 |---|---|---|---|---|
-| `test_auth.py` | 25 | `AuthTest` | 22 | 3 token cases need phase 3/4 endpoints; report checks in the last test need phase 4 |
-| `test_mastery.py` | 207 | `MasteryTest` | 203 | 4 API tests (phase 3) |
-| `test_mastery_display.py` | 11 | `MasteryDisplayTest` | 6 (+1 Java-only) | 5 API tests (phases 3 and 4) |
-| `test_hints.py` | 8 | `HintsTest` | 7 | 1 API test (phase 3) |
+| `test_auth.py` | 25 | `AuthTest` | 23 | 2 token cases need phase 4 endpoints; report checks in the last test need phase 4 |
+| `test_mastery.py` | 207 | `MasteryTest` + `MasteryApiTest` | 203 + 4 | |
+| `test_mastery_display.py` | 11 | `MasteryDisplayTest` + `GameApiTest` | 6 + 1 (+1 Java-only) | 4 report tests (phase 4) |
+| `test_hints.py` | 8 | `HintsTest` + `GameApiTest` | 7 + 1 | |
 | `test_questions.py` | 61 | `QuestionsTest` | 61 | |
-| `test_story_questions.py` | 92 | `StoryQuestionsTest` | 86 | 6 API tests (phase 3) |
-| `test_sessions.py` | 16 | | 0 | phase 3 |
+| `test_story_questions.py` | 92 | `StoryQuestionsTest` + `GameApiTest` | 86 + 6 | |
+| `test_sessions.py` | 16 | `SessionsTest` + `ApiShapeTest` | 15 + 1 (+3 Java-only) | report checks in the wrong-answer test (phase 4) |
 | `test_guardians.py` | 8 | | 0 | phase 4 |
 | `test_reports.py` | 2 | | 0 | phase 4 |
 | `test_dashboard.py` | 13 | | 0 | phase 4 |

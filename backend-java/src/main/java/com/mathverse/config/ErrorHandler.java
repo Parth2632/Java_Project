@@ -104,12 +104,12 @@ public class ErrorHandler {
     ResponseEntity<Object> wrongParameterType(MethodArgumentTypeMismatchException e) {
         String where = e.getParameter().hasParameterAnnotation(
                 org.springframework.web.bind.annotation.PathVariable.class) ? "path" : "query";
-        return unprocessable(List.of(wrongType(List.of(where, e.getName()), e.getRequiredType())));
+        return unprocessable(List.of(wrongType(List.of(where, snakeCase(e.getName())), e.getRequiredType())));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     ResponseEntity<Object> missingQuery(MissingServletRequestParameterException e) {
-        return unprocessable(List.of(new FieldProblem("missing", List.of("query", e.getParameterName()),
+        return unprocessable(List.of(new FieldProblem("missing", List.of("query", snakeCase(e.getParameterName())),
                 "Field required")));
     }
 

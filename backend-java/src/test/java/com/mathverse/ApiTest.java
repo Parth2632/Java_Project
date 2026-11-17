@@ -91,6 +91,56 @@ public abstract class ApiTest {
         return register("student");
     }
 
+    // ── missions (Python fixtures correct_index, play, win_mission) ──────────
+
+    /** POST /sessions for this boss. */
+    protected Response start(Account account, String bossId) {
+        return postJson("/sessions", Map.of("boss_id", bossId), account);
+    }
+
+    protected Response start(Account account) {
+        return start(account, "goblin");
+    }
+
+    /** The stored answer for an attempt (the API never reveals it early). */
+    protected int correctIndex(long attemptId) {
+        return attempts.findById(attemptId).orElseThrow().getCorrectIndex();
+    }
+
+    /** Answers one question, correctly or not, plus any extra fields. Returns the response body. */
+    protected JsonNode play(Account account, long attemptId, boolean correct, Map<String, Object> extra) {
+        int right = correctIndex(attemptId);
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("selected_index", correct ? right : (right + 1) % 4);
+        payload.put("response_time_ms", 8000);
+        payload.putAll(extra);
+        Response res = postJson("/attempts/" + attemptId + "/answer", payload, account);
+        assertThat(res.status()).as(res.text()).isEqualTo(200);
+        return res.json();
+    }
+
+    protected JsonNode play(Account account, long attemptId, boolean correct) {
+        return play(account, attemptId, correct, Map.of());
+    }
+
+    /** Plays a whole mission with correct answers. Returns the final answer response. */
+    protected JsonNode winMission(Account account, String bossId, Map<String, Object> extra) {
+        Response res = start(account, bossId);
+        assertThat(res.status()).as(res.text()).isEqualTo(201);
+        long attemptId = res.json().get("question").get("attempt_id").asLong();
+        while (true) {
+            JsonNode body = play(account, attemptId, true, extra);
+            if (body.get("next_question").isNull()) {
+                return body;
+            }
+            attemptId = body.get("next_question").get("attempt_id").asLong();
+        }
+    }
+
+    protected JsonNode winMission(Account account) {
+        return winMission(account, "goblin", Map.of());
+    }
+
     // ── requests ─────────────────────────────────────────────────────────────
 
     /** A response: status code, body text, and body as JSON. */
