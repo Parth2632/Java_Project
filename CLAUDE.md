@@ -175,7 +175,9 @@ Needs the user (an assistant cannot do these):
 1. **Real webcam testing is partly done** (2026-11-16, with the Python backend:
    one laptop webcam, Chrome, one person; `docs/WEBCAM_TEST_PLAN.md` section 8).
    On 2026-11-18 the user checked it again with the Java backend on the same
-   laptop and reported it working (no numbers recorded; section 9). Still
+   laptop and reported it working (no numbers recorded; section 9). The user
+   decided the section 8 (Python-backend) numbers serve as this version's
+   results, labelled as such; their facing percentages used the old limit 25. Still
    untested on real hardware: a fresh
    permission prompt, permission denied, no camera, camera in use elsewhere,
    lighting, other cameras and positions, Edge, Firefox, Safari, phones, slow

@@ -200,6 +200,13 @@ found, head angles and calibration with real numbers.
 
 ## 8. Real webcam run, 2026-11-16
 
+This run used the original Python backend. The camera code (MediaPipe, the
+head angles and the four-number summary) is frontend code and did not change
+in the Java port; the backend only stores the four numbers. So the project
+owner decided on 2026-11-18 that these results are used as this version's
+real-webcam results. The "counted as facing" percentages were taken with the
+old turn limit of 25 degrees, not the current 30.
+
 One device: a laptop with its built-in camera above the screen ("HP HD
 Camera"), Chrome 157 on Windows 11, indoor room light, one adult tester. The
 app was driven through the Claude in Chrome extension; the tester followed

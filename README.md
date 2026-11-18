@@ -155,7 +155,10 @@ journals/, project-proposal/, project-report-prototype-stage/, srs/   coursework
 
 - The attention estimate has been checked on one real device only (one
   laptop webcam, Chrome, one person, 2026-11-16) and in a real browser with a
-  pretend webcam (`npm run check:camera`). Other cameras, browsers, lighting
+  pretend webcam (`npm run check:camera`). The 2026-11-16 run used the
+  original Python backend; the camera code is the same frontend code, so its
+  results stand for this version, and the camera was rechecked with the Java
+  backend on 2026-11-18. Other cameras, browsers, lighting
   and devices are untested. Results and what is left are in
   `docs/WEBCAM_TEST_PLAN.md`.
 - The "on screen" figure reflects head direction, not eye gaze. On the tested
