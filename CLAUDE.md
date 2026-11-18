@@ -174,7 +174,9 @@ Needs the user (an assistant cannot do these):
 
 1. **Real webcam testing is partly done** (2026-11-16, with the Python backend:
    one laptop webcam, Chrome, one person; `docs/WEBCAM_TEST_PLAN.md` section 8).
-   Not repeated with the Java backend. Still untested on real hardware: a fresh
+   On 2026-11-18 the user checked it again with the Java backend on the same
+   laptop and reported it working (no numbers recorded; section 9). Still
+   untested on real hardware: a fresh
    permission prompt, permission denied, no camera, camera in use elsewhere,
    lighting, other cameras and positions, Edge, Firefox, Safari, phones, slow
    devices. Say "checked on one device", never "verified".

@@ -5,8 +5,9 @@ on one laptop, one webcam, one browser and one person (section 8). Cases 1, 5,
 6, 8 and part of 10 passed there. Lighting, other cameras and positions, other
 browsers, other devices, a camera in use by another app, and a real permission
 prompt have **not** been tested on real hardware. A run in a real browser with
-a pretend webcam also passes (section 7). Describe the camera as "checked on
-one device", not as fully verified.
+a pretend webcam also passes (section 7). On 2026-11-18 the project owner
+checked the camera again with the Java backend on the same laptop (section 9).
+Describe the camera as "checked on one device", not as fully verified.
 
 The automated tests use a pretend camera and a pretend face model. They prove
 the app's own logic. They cannot prove that a real browser prompt, a real
@@ -278,3 +279,23 @@ appeared to be on. Several automation commands had been cut off and were still
 running in the page at the time, clicking the camera button over each other.
 A clean repeat of the same steps behaved correctly. The overlap is the likely
 cause, but that was not proven.
+
+## 9. Check with the Java backend, 2026-11-18
+
+Same laptop and built-in camera as section 8, Chrome on Windows 11, backend
+running from the Java jar.
+
+- **Observed during an assistant-driven run:** case 1 passed. The camera
+  turned on with no browser prompt (permission for `localhost` was already
+  granted), a face was found, a baseline was set, and the readout showed 10
+  readings a second.
+- **Head angles by pose: not recorded.** The automated pose sequence ran while
+  nobody was following it (turning away and leaning out of view still read as
+  facing the screen), so its numbers were discarded. A second attempt was
+  stopped before it started.
+- **The project owner then checked the camera themselves** and reported that
+  it works with the Java backend. No case-by-case results or numbers were
+  recorded for that check.
+
+So the section 8 pose measurements (taken with the Python backend and the old
+turn limit of 25) have still not been repeated with the turn limit of 30.
