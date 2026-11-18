@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "java-backend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d backend && java --enable-native-access=ALL-UNNAMED -jar target\\mathverse-backend-1.0.0.jar"],
+      "port": 8001
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d frontend && npm run dev"],
+      "port": 5173
+    }
+  ]
+}

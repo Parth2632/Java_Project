@@ -141,9 +141,10 @@ change makes one of those tests fail, the change is wrong, not the test.
 - Secrets live in `backend/.env` (git-ignored). Never print or commit them.
   `*.db` files and `backend/target/` are git-ignored and must stay that way.
 
-## Current state (updated 2026-11-17)
+## Current state (updated 2026-11-18)
 
-Everything is local; nothing has been pushed to `origin`.
+The Java port was pushed to `origin/main` on 2026-11-18 with the user's
+permission. Later pushes still need it each time.
 
 - The Java backend was built in phases 1–6 (branches `java-p1-accounts` …
   `java-p6-switch`, all contained in `main`). Every one of the original 443
@@ -182,7 +183,8 @@ Needs the user (an assistant cannot do these):
    raising the turn limit from 25 to 30 on 2026-11-16. The real run has not been
    repeated with 30. Looking down at the keyboard or lap is still counted as
    facing the screen. Change nothing further without the user's approval.
-3. **Pushing to `origin`** waits for the user's explicit permission.
+3. **Pushing to `origin`** needs the user's explicit permission each time
+   (given once, on 2026-11-18, for the Java port).
 4. **Deployment is postponed by the user** (2026-11-16). The approach chosen
    then (for the Python version): one Docker container on one free host, with
    the backend also serving the built frontend from the same address; SQLite
@@ -196,12 +198,15 @@ Needs the user (an assistant cannot do these):
    (only its fallbacks). Never print a key.
 6. **`frontend/public/laugh.mp3`** (6.6 s) is unused and nobody has listened to
    it. Decide: use it or delete it.
-7. **No CI in this repository.** The original project's `.github/workflows` was
-   not copied here. Adding a workflow (Java tests and frontend checks) needs
-   the user's go-ahead.
+7. **CI was added on 2026-11-18** (`.github/workflows/ci.yml`, approved by the
+   user): `mvnw test` on Java 21, and the frontend's test, typecheck, lint and
+   build on Node 20. Its first run on GitHub has not been checked yet.
+   `check:camera` is not in CI (it needs both servers and a browser).
 8. **`backend/.env` and `backend/mathverse.db`** on this machine were created
-   during phase 5 (a generated secret, `DEMO_MODE=true`, test and demo
-   accounts). Turn demo mode off if it is not wanted.
+   during phase 5 (a generated secret, test and demo accounts). `DEMO_MODE`
+   was turned off on 2026-11-18; set it to `true` to show the demo buttons.
+   `.claude/launch.json` (committed) starts the built jar and the frontend
+   dev server; it uses `cmd`, so it works on Windows only.
 
 Known and open:
 
